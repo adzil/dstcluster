@@ -65,8 +65,9 @@ any steam-related functionality will not work.
 
 ### -disabledatacollection
 
-- Disable data collection for the server.
-- We require the collection of user data to provide online services. Servers
+Disable data collection for the server.
+
+We require the collection of user data to provide online services. Servers
 with disabled data collection will only have access to play in offline mode.
 For more details on our privacy policy and how we use the data we collect,
 please see our official privacy policy. <https://klei.com/privacy-policy>
@@ -78,8 +79,9 @@ connections. This is an advanced feature that most people will not need to use.
 
 ### -players
 
-- Valid values: `1..64`
-- Set the maximum number of players that will be allowed to join the game. This
+Valid values: `1..64`
+
+Set the maximum number of players that will be allowed to join the game. This
 option overrides the `[GAMEPLAY] / max_players` setting in `cluster.ini`.
 
 ### -backup_logs
@@ -90,8 +92,9 @@ backups will be stored in a directory called `backup` in the same directory as
 
 ### -tick
 
-- Valid values: `15..60`
-- This is the number of times per-second that the server sends updates to
+Valid values: `15..60`
+
+This is the number of times per-second that the server sends updates to
 clients. Increasing this may improve precision, but will result in more network
 traffic. This option overrides the `[NETWORK] / tick_rate` setting in
 `cluster.ini`. It is recommended to leave this at the default value of `15`. If
