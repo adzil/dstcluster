@@ -1,6 +1,8 @@
 // Copyright (c) 2019 Fadhli Dzil Ikram. All rights reserved.
-// This source code is governed by a MIT license. See LICENSE for more info.
+// Use of source code is governed by a MIT license, see LICENSE for more info.
 
+// Command dstcluster provides command-line interface for running and managing
+// multiple shards in a Don't Starve Together cluster configuration.
 package main
 
 import (
