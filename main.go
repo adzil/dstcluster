@@ -12,6 +12,10 @@ import (
 	"strconv"
 )
 
+const (
+	serverBinary = "./dontstarve_dedicated_server_nullrenderer"
+)
+
 type options struct {
 	PersistentStorageRoot string
 	ConfDir               string
@@ -88,6 +92,10 @@ func getOptions() options {
 }
 
 func main() {
+	if info, err := os.Stat(serverBinary); err != nil || info.IsDir() {
+		fmt.Printf("command must be run under the game's \"bin/\" directory\n")
+		os.Exit(1)
+	}
 	opt := getOptions()
 	if opt.PersistentStorageRoot == "" {
 		fmt.Printf("cannot resolve the system persistent storage root\n")
