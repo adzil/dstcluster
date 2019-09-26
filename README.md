@@ -26,8 +26,8 @@ any shard folder inside the cluster configuration.
 
 ## Command-Line Options
 
-Command-line options information are gathered directly from the Klei forum:
-<https://forums.kleientertainment.com/forums/topic/64743-dedicated-server-command-line-options-guide/>.
+This information are directly taken from
+[the Klei forum](https://forums.kleientertainment.com/forums/topic/64743-dedicated-server-command-line-options-guide/).
 
 ### -persistent_storage_root
 Change the directory that your configuration directory resides in. This must be
@@ -35,9 +35,11 @@ an absolute path. The full path to your files will be
 `<persistent_storage_root>/<conf_dir>/` where `<conf_dir>` is the value set by
 `-conf_dir`. The default for this option depends on the platform:
 
-> Windows: `<Your documents folder>/Klei`  
-> Mac OSX: `<Your home folder>/Documents/Klei`  
-> Linux: `~/.klei`
+Platform | Directory
+:------: | ---------
+Windows  | `<Your documents folder>/Klei`
+MacOS X  | `<Your home folder>/Documents/Klei`
+Linux    | `~/.klei`
 
 ### -conf_dir
 
@@ -111,7 +113,7 @@ if you are running it under Docker container. Under the hood, it sends `SIGINT`
 to every running shards so it can cleanly terminate itself and wait the last
 shard terminated.
 
-Note that the default Docker termination wait time (`10` seconds) may be not
+Note that the default Docker termination wait time (10 seconds) may be not
 enough for the shard to clean themself up. It is possible to corrupt the save
 data if the termination wait time has already passed and Docker forcefully kill
 the container.
