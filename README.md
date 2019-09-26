@@ -113,8 +113,8 @@ again to switch between `STDIN`s.
 
 `dstcluster` can be safely terminated with `SIGINT` (or `Ctrl+C`) or `SIGTERM`
 if you are running it under Docker container. Under the hood, it sends `SIGINT`
-to every running shards so it can cleanly terminate itself and wait the last
-shard terminated.
+to every running shards so it can cleanly terminate itself and wait until the
+last running shard has been exited.
 
 Note that the default Docker termination wait time (10 seconds) may be not
 enough for the shard to clean themself up. It is possible to corrupt the save
