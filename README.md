@@ -29,7 +29,7 @@ any shard folder inside the cluster configuration.
 Command-line options information are gathered directly from the Klei forum:
 <https://forums.kleientertainment.com/forums/topic/64743-dedicated-server-command-line-options-guide/>.
 
-### -persistent_storage_root <dir>
+### -persistent_storage_root
 Change the directory that your configuration directory resides in. This must be
 an absolute path. The full path to your files will be
 `<persistent_storage_root>/<conf_dir>/` where `<conf_dir>` is the value set by
@@ -39,7 +39,7 @@ an absolute path. The full path to your files will be
 > Mac OSX: `<Your home folder>/Documents/Klei`  
 > Linux: `~/.klei`
 
-### -conf_dir <string>
+### -conf_dir
 
 Change the name of your configuration directory. This name should not contain
 any slashes. The full path to your files will be
@@ -47,7 +47,7 @@ any slashes. The full path to your files will be
 value set by the `-persistent_storage_root` option. The default is
 `DoNotStarveTogether`.
 
-### -cluster <string>
+### -cluster
 
 Set the name of the cluster directory that this server will use. The server
 will expect to find the cluster.ini file in the following location:
@@ -69,12 +69,12 @@ with disabled data collection will only have access to play in offline mode.
 For more details on our privacy policy and how we use the data we collect,
 please see our official privacy policy. <https://klei.com/privacy-policy>
 
-### -bind_ip <ip>
+### -bind_ip
 
 Change the address that the server binds to when listening for player
 connections. This is an advanced feature that most people will not need to use.
 
-### -players <int>
+### -players
 
 - Valid values: `1..64`
 - Set the maximum number of players that will be allowed to join the game. This
@@ -86,7 +86,7 @@ Create a backup of the previous log files each time the server is run. The
 backups will be stored in a directory called `backup` in the same directory as
 `server.ini`.
 
-### -tick <int>
+### -tick
 
 - Valid values: `15..60`
 - This is the number of times per-second that the server sends updates to
