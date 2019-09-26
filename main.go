@@ -123,11 +123,11 @@ func main() {
 		shards = append(shards, shard)
 	}
 	if !clusterConfig {
-		fmt.Printf("cluster.ini configuration not defined on cluster \"%s\"\n", opt.Cluster)
+		fmt.Printf("configuration \"cluster.ini\" does not exist in cluster \"%s\"\n", opt.Cluster)
 		os.Exit(1)
 	}
 	if !clusterToken {
-		fmt.Printf("cluster_token.txt token not defined on cluster \"%s\"\n", opt.Cluster)
+		fmt.Printf("token \"cluster_token.txt\" does not exist in cluster \"%s\"\n", opt.Cluster)
 		os.Exit(1)
 	}
 	if len(shards) == 0 {
