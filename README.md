@@ -95,3 +95,23 @@ traffic. This option overrides the `[NETWORK] / tick_rate` setting in
 `cluster.ini`. It is recommended to leave this at the default value of `15`. If
 you do change this option, it is recommended that you do so only for LAN games,
 and use a number evenly divisible into `60` (`15`, `20`, `30`).
+
+## Console Input
+
+Because of there are multiple shard instances running on `dstcluster`, we need
+to be able to switch between shard's `STDIN` to enter a lua command. To do that
+simply type `:<shard_name>` followed by a new line. Subsequent `STDIN` input
+after the command will be passed through to the appointed shard. Use the command
+again to switch between `STDIN`s.
+
+## Termination Signal
+
+`dstcluster` can be safely terminated with `SIGINT` (or `Ctrl+C`) or `SIGTERM`
+if you are running it under Docker container. Under the hood, it sends `SIGINT`
+to every running shards so it can cleanly terminate itself and wait the last
+shard terminated.
+
+Note that the default Docker termination wait time (`10` seconds) may be not
+enough for the shard to clean themself up. It is possible to corrupt the save
+data if the termination wait time has already passed and Docker forcefully kill
+the container.
