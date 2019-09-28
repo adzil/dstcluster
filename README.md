@@ -24,6 +24,28 @@ shard options such as server bind and steam ports) that used to run the
 `dontstarve_dedicated_server_nullrenderer` command. It will automatically start
 any shard folder inside the cluster configuration.
 
+## Console Input
+
+Because of there are multiple shard instances running under a single
+`dstcluster` process, we need to be able to switch between shard's `STDIN` to
+enter a lua command. To do that simply type `:<shard_name>` followed by a new
+line. Subsequent `STDIN` input after the command will be passed through to the
+appointed shard. Use the command again to switch between `STDIN`s.
+
+## Graceful Termination
+
+`dstcluster` can be safely terminated with `SIGINT` (or `Ctrl+C`) or `SIGTERM`
+if you are running it under Docker container. On Windows, sending `Ctrl+C` or
+`Ctrl+Break` signal will also trigger graceful termination. Under the hood, it
+sends `SIGINT` (or `Ctrl+Break` signal on Windows) to every running shards so
+it can cleanly terminate itself and wait until the last running shard has been
+terminated.
+
+Note that the default Docker termination wait time (10 seconds) may be not
+enough for the shard to clean themself up. It is possible to corrupt the save
+data if the termination wait time has already passed and Docker forcefully kill
+the container.
+
 ## Command-Line Options
 
 This information are directly taken from
@@ -100,25 +122,3 @@ traffic. This option overrides the `[NETWORK] / tick_rate` setting in
 `cluster.ini`. It is recommended to leave this at the default value of `15`. If
 you do change this option, it is recommended that you do so only for LAN games,
 and use a number evenly divisible into `60` (`15`, `20`, `30`).
-
-## Console Input
-
-Because of there are multiple shard instances running under a single
-`dstcluster` process, we need to be able to switch between shard's `STDIN` to
-enter a lua command. To do that simply type `:<shard_name>` followed by a new
-line. Subsequent `STDIN` input after the command will be passed through to the
-appointed shard. Use the command again to switch between `STDIN`s.
-
-## Graceful Termination
-
-`dstcluster` can be safely terminated with `SIGINT` (or `Ctrl+C`) or `SIGTERM`
-if you are running it under Docker container. On Windows, sending `Ctrl+C` or
-`Ctrl+Break` signal will also trigger graceful termination. Under the hood, it
-sends `SIGINT` (or `Ctrl+Break` signal on Windows) to every running shards so
-it can cleanly terminate itself and wait until the last running shard has been
-terminated.
-
-Note that the default Docker termination wait time (10 seconds) may be not
-enough for the shard to clean themself up. It is possible to corrupt the save
-data if the termination wait time has already passed and Docker forcefully kill
-the container.
