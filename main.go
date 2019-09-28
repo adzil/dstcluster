@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -35,6 +36,8 @@ func buildBaseArgs(opt options) []string {
 		"-persistent_storage_root", opt.PersistentStorageRoot,
 		"-conf_dir", opt.ConfDir,
 		"-cluster", opt.Cluster,
+		// TODO: Check if the following flag also works on Windows or not
+		"-monitor_parent_process", strconv.Itoa(os.Getpid()),
 	}
 	if opt.Offline {
 		baseArgs = append(baseArgs, "-offline")
@@ -93,14 +96,29 @@ func getOptions() options {
 	return opt
 }
 
+func tryChdir() bool {
+	if info, err := os.Stat(serverBinary); err == nil && !info.IsDir() {
+		return true
+	}
+	execPath, _ := os.Executable()
+	if execPath == "" {
+		return false
+	}
+	if err := os.Chdir(filepath.Dir(execPath)); err != nil {
+		return false
+	}
+	info, err := os.Stat(serverBinary)
+	return err == nil && !info.IsDir()
+}
+
 func main() {
-	if info, err := os.Stat(serverBinary); err != nil || info.IsDir() {
-		fmt.Printf("command must be run under the game's \"bin/\" directory\n")
+	if !tryChdir() {
+		fmt.Printf("command must be executed and/or stored under the game's \"bin/\" directory\n")
 		os.Exit(1)
 	}
 	opt := getOptions()
 	if opt.PersistentStorageRoot == "" {
-		fmt.Printf("cannot resolve the system persistent storage root\n")
+		fmt.Printf("cannot resolve the current system persistent storage root\n")
 		os.Exit(1)
 	}
 	clusterDir := filepath.Join(opt.PersistentStorageRoot, opt.ConfDir, opt.Cluster)
@@ -114,6 +132,7 @@ func main() {
 		fmt.Printf("path \"%s\" is not a directory\n", clusterDir)
 		os.Exit(1)
 	}
+
 	var shards []string
 	var clusterToken, clusterConfig bool
 	for _, fileInfo := range fileInfos {
@@ -144,6 +163,19 @@ func main() {
 		fmt.Printf("cluster \"%s\" does not contain any shard configuration\n", opt.Cluster)
 		os.Exit(1)
 	}
+	var builder strings.Builder
+	for i, shard := range shards {
+		if i > 0 {
+			builder.WriteString(", ")
+			if i == len(shards)-1 {
+				builder.WriteString(" and ")
+			}
+		}
+		builder.WriteByte('"')
+		builder.WriteString(shard)
+		builder.WriteByte('"')
+	}
+	fmt.Printf("starting cluster \"%s\" with %d shard(s): %s\n", opt.Cluster, len(shards), builder.String())
 	baseArgs := buildBaseArgs(opt)
 	_ = baseArgs // TODO: Do something with it.
 	fmt.Printf("%#v\n", opt)
