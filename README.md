@@ -1,7 +1,7 @@
 # Don't Starve Together Cluster Runner
 
-`dstcluster` provides cross-platform command-line interface for running and
-managing multiple shards in a Don't Starve Together cluster configuration.
+`dstcluster` provides cross-platform command-line interface for running
+multiple shards in a Don't Starve Together cluster configuration.
 
 ## Quick Start
 
