@@ -1,8 +1,7 @@
 // Copyright (c) 2019 Fadhli Dzil Ikram. All rights reserved.
-// Use of source code is governed by a MIT license, see LICENSE for more info.
+// Use of this source code is governed by a MIT license that can be found in
+// the LICENSE file.
 
-// Command dstcluster provides command-line interface for running and managing
-// multiple shards in a Don't Starve Together cluster configuration.
 package main
 
 import (
@@ -13,10 +12,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-)
-
-const (
-	serverBinary = "./dontstarve_dedicated_server_nullrenderer"
 )
 
 type options struct {
@@ -36,7 +31,6 @@ func buildBaseArgs(opt options) []string {
 		"-persistent_storage_root", opt.PersistentStorageRoot,
 		"-conf_dir", opt.ConfDir,
 		"-cluster", opt.Cluster,
-		// TODO: Check if the following flag also works on Windows or not
 		"-monitor_parent_process", strconv.Itoa(os.Getpid()),
 	}
 	if opt.Offline {
@@ -70,10 +64,8 @@ func getDefaultRoot() string {
 		return home + "\\Documents\\Klei"
 	case "darwin":
 		return home + "/Documents/Klei"
-	case "linux":
-		return home + "/.klei"
 	}
-	return ""
+	return home + "/.klei"
 }
 
 func getOptions() options {

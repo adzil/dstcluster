@@ -1,7 +1,7 @@
 # Don't Starve Together Cluster Runner
 
-`dstcluster` provides command-line interface for running and managing multiple
-shards in a Don't Starve Together cluster configuration.
+`dstcluster` provides cross-platform command-line interface for running and
+managing multiple shards in a Don't Starve Together cluster configuration.
 
 ## Quick Start
 
@@ -109,12 +109,14 @@ simply type `:<shard_name>` followed by a new line. Subsequent `STDIN` input
 after the command will be passed through to the appointed shard. Use the command
 again to switch between `STDIN`s.
 
-## Termination Signal
+## Graceful Termination
 
 `dstcluster` can be safely terminated with `SIGINT` (or `Ctrl+C`) or `SIGTERM`
-if you are running it under Docker container. Under the hood, it sends `SIGINT`
-to every running shards so it can cleanly terminate itself and wait until the
-last running shard has been exited.
+if you are running it under Docker container. On Windows, sending `Ctrl+C` or
+`Ctrl+Break` signal will also trigger graceful termination. Under the hood, it
+sends `SIGINT` (or `Ctrl+Break` signal on Windows) to every running shards so
+it can cleanly terminate itself and wait until the last running shard has been
+terminated.
 
 Note that the default Docker termination wait time (10 seconds) may be not
 enough for the shard to clean themself up. It is possible to corrupt the save
