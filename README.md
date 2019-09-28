@@ -103,11 +103,11 @@ and use a number evenly divisible into `60` (`15`, `20`, `30`).
 
 ## Console Input
 
-Because of there are multiple shard instances running on `dstcluster`, we need
-to be able to switch between shard's `STDIN` to enter a lua command. To do that
-simply type `:<shard_name>` followed by a new line. Subsequent `STDIN` input
-after the command will be passed through to the appointed shard. Use the command
-again to switch between `STDIN`s.
+Because of there are multiple shard instances running under a single
+`dstcluster` process, we need to be able to switch between shard's `STDIN` to
+enter a lua command. To do that simply type `:<shard_name>` followed by a new
+line. Subsequent `STDIN` input after the command will be passed through to the
+appointed shard. Use the command again to switch between `STDIN`s.
 
 ## Graceful Termination
 
