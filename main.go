@@ -8,10 +8,15 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
+	"syscall"
 )
 
 type options struct {
@@ -139,8 +144,12 @@ func buildBaseArgs(opt options) []string {
 	return baseArgs
 }
 
-func fatalf(format string, v ...interface{}) {
+func errorf(format string, v ...interface{}) {
 	fmt.Fprintf(os.Stderr, format, v...)
+}
+
+func fatalf(format string, v ...interface{}) {
+	errorf(format, v...)
 	os.Exit(1)
 }
 
@@ -149,10 +158,6 @@ func main() {
 	serverPath := resolveServerPath(opt.ServerPath)
 	if serverPath == "" {
 		fatalf("cannot find the game binary in \"%s\"\n", opt.ServerPath)
-	}
-	serverDir := filepath.Dir(serverPath)
-	if err := os.Chdir(serverDir); err != nil {
-		fatalf("cannot change working directory to \"%s\": %s\n", serverDir, err.Error())
 	}
 	if opt.PersistentStorageRoot == "" {
 		fatalf("cannot resolve the current system persistent storage root\n")
@@ -201,5 +206,59 @@ func main() {
 	fmt.Printf("starting cluster \"%s\" with %d shard%s: %s\n", opt.Cluster, len(shards), getPlural(len(shards)),
 		getConcat(shards))
 	baseArgs := buildBaseArgs(opt)
-	_ = baseArgs // TODO: Do something with it.
+	serverDir := filepath.Dir(serverPath)
+	done := make(chan struct{})
+	var waiter sync.WaitGroup
+	var exitCode atomic.Value
+	for _, shard := range shards {
+		args := append(baseArgs, "-shard", shard)
+		cmd := Command(serverPath, args...)
+		cmd.Dir = serverDir
+		shardPrefix := shard + ": "
+		cmd.Stdout = LineWriter(PrefixWriter(os.Stdout, shardPrefix))
+		cmd.Stderr = LineWriter(PrefixWriter(os.Stderr, shardPrefix))
+		if err := cmd.Start(); err != nil {
+			errorf("cannot start shard \"%s\": %s\n", shard, err.Error())
+			close(done)
+			exitCode.Store(1)
+			break
+		}
+		waiter.Add(1)
+		go func(shard string) {
+			if err := cmd.Wait(); err != nil {
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					ecode := exitErr.ExitCode()
+					errorf("shard \"%s\" exited with exit code %d\n", shard, ecode)
+					exitCode.Store(exitCode)
+				} else {
+					errorf("cannot wait for shard \"%s\": %s\n", shard, err.Error())
+					exitCode.Store(1)
+				}
+			}
+			close(done)
+			waiter.Done()
+		}(shard)
+		go func() {
+			<-done
+			Interrupt(cmd)
+		}()
+	}
+
+	trap := make(chan os.Signal)
+	signal.Notify(trap, os.Interrupt, syscall.SIGTERM)
+	select {
+	case <-trap:
+		close(done)
+		fmt.Printf("starting graceful termination, interrupt to skip wait\n")
+	case <-done:
+		errorf("waiting for other shard to terminate, interrupt to skip wait\n")
+	}
+	go func() {
+		waiter.Wait()
+		close(trap)
+	}()
+	<-trap
+	if ecode, _ := exitCode.Load().(int); ecode != 0 {
+		os.Exit(ecode)
+	}
 }
