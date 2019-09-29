@@ -176,6 +176,7 @@ func main() {
 	}
 
 	var shards []string
+	var maxShardLen int
 	var clusterToken, clusterConfig bool
 	for _, fileInfo := range fileInfos {
 		if !fileInfo.IsDir() {
@@ -192,6 +193,9 @@ func main() {
 			continue
 		}
 		shards = append(shards, shard)
+		if len(shard) > maxShardLen {
+			maxShardLen = len(shard)
+		}
 	}
 	if !clusterConfig {
 		fatalf("configuration \"cluster.ini\" does not exist in cluster \"%s\"\n", opt.Cluster)
@@ -214,7 +218,7 @@ func main() {
 		args := append(baseArgs, "-shard", shard)
 		cmd := Command(serverPath, args...)
 		cmd.Dir = serverDir
-		shardPrefix := shard + ": "
+		shardPrefix := shard + strings.Repeat(" ", maxShardLen-len(shard)) + ": "
 		cmd.Stdout = LineWriter(PrefixWriter(os.Stdout, shardPrefix))
 		cmd.Stderr = LineWriter(PrefixWriter(os.Stderr, shardPrefix))
 		if err := cmd.Start(); err != nil {
@@ -226,6 +230,7 @@ func main() {
 		waiter.Add(1)
 		go func(shard string) {
 			if err := cmd.Wait(); err != nil {
+				close(done)
 				if exitErr, ok := err.(*exec.ExitError); ok {
 					ecode := exitErr.ExitCode()
 					errorf("shard \"%s\" exited with exit code %d\n", shard, ecode)
@@ -235,7 +240,6 @@ func main() {
 					exitCode.Store(1)
 				}
 			}
-			close(done)
 			waiter.Done()
 		}(shard)
 		go func() {
@@ -255,7 +259,7 @@ func main() {
 	}
 	go func() {
 		waiter.Wait()
-		close(trap)
+		trap <- os.Interrupt
 	}()
 	<-trap
 	if ecode, _ := exitCode.Load().(int); ecode != 0 {
