@@ -15,6 +15,7 @@ import (
 )
 
 type options struct {
+	ServerPath            string
 	PersistentStorageRoot string
 	ConfDir               string
 	Cluster               string
@@ -24,6 +25,67 @@ type options struct {
 	Players               int
 	BackupLogs            bool
 	Tick                  int
+}
+
+func defaultRoot() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	switch runtime.GOOS {
+	case "windows":
+		return home + "\\Documents\\Klei"
+	case "darwin":
+		return home + "/Documents/Klei"
+	}
+	return home + "/.klei"
+}
+
+func defaultServerPath() string {
+	switch runtime.GOOS {
+	case "windows":
+		return ".\\dontstarve_dedicated_server_nullrenderer.exe"
+	}
+	return "./dontstarve_dedicated_server_nullrenderer"
+}
+
+func getOptions() options {
+	var opt options
+	flag.StringVar(&opt.ServerPath, "server_path", defaultServerPath(), "Change the dedicated game server binary path.")
+	flag.StringVar(&opt.PersistentStorageRoot, "persistent_storage_root", defaultRoot(),
+		"Change the directory that your configuration directory resides in.")
+	flag.StringVar(&opt.ConfDir, "conf_dir", "DoNotStarveTogether", "Change the name of your configuration directory.")
+	flag.StringVar(&opt.Cluster, "cluster", "Cluster_1",
+		"Set the name of the cluster directory that this server will use.")
+	flag.BoolVar(&opt.Offline, "offline", false, "Start the server in offline mode.")
+	flag.BoolVar(&opt.DisableDataCollection, "disabledatacollection", false, "Disable data collection for the server.")
+	flag.StringVar(&opt.BindIP, "bind_ip", "",
+		"Change the address that the server binds to when listening for player connections.")
+	flag.IntVar(&opt.Players, "players", 0, "Set the maximum number of players that will be allowed to join the game.")
+	flag.BoolVar(&opt.BackupLogs, "backup_logs", false,
+		"Create a backup of the previous log files each time the server is run.")
+	flag.IntVar(&opt.Tick, "tick", 0,
+		"This is the number of times per-second that the server sends updates to clients.")
+	flag.Parse()
+	return opt
+}
+
+func resolveServerPath(serverPath string) string {
+	if info, err := os.Stat(serverPath); err == nil && !info.IsDir() {
+		return serverPath
+	}
+	if filepath.IsAbs(serverPath) {
+		return ""
+	}
+	execPath, _ := os.Executable()
+	if execPath == "" {
+		return ""
+	}
+	execPath = filepath.Join(filepath.Dir(execPath), serverPath)
+	if info, err := os.Stat(execPath); err == nil && !info.IsDir() {
+		return execPath
+	}
+	return ""
 }
 
 func buildBaseArgs(opt options) []string {
@@ -54,61 +116,17 @@ func buildBaseArgs(opt options) []string {
 	return baseArgs
 }
 
-func getDefaultRoot() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	switch runtime.GOOS {
-	case "windows":
-		return home + "\\Documents\\Klei"
-	case "darwin":
-		return home + "/Documents/Klei"
-	}
-	return home + "/.klei"
-}
-
-func getOptions() options {
-	var opt options
-	flag.StringVar(&opt.PersistentStorageRoot, "persistent_storage_root", getDefaultRoot(),
-		"Change the directory that your configuration directory resides in.")
-	flag.StringVar(&opt.ConfDir, "conf_dir", "DoNotStarveTogether", "Change the name of your configuration directory.")
-	flag.StringVar(&opt.Cluster, "cluster", "Cluster_1",
-		"Set the name of the cluster directory that this server will use.")
-	flag.BoolVar(&opt.Offline, "offline", false, "Start the server in offline mode.")
-	flag.BoolVar(&opt.DisableDataCollection, "disabledatacollection", false, "Disable data collection for the server.")
-	flag.StringVar(&opt.BindIP, "bind_ip", "",
-		"Change the address that the server binds to when listening for player connections.")
-	flag.IntVar(&opt.Players, "players", 0, "Set the maximum number of players that will be allowed to join the game.")
-	flag.BoolVar(&opt.BackupLogs, "backup_logs", false,
-		"Create a backup of the previous log files each time the server is run.")
-	flag.IntVar(&opt.Tick, "tick", 0,
-		"This is the number of times per-second that the server sends updates to clients.")
-	flag.Parse()
-	return opt
-}
-
-func tryChdir() bool {
-	if info, err := os.Stat(serverBinary); err == nil && !info.IsDir() {
-		return true
-	}
-	execPath, _ := os.Executable()
-	if execPath == "" {
-		return false
-	}
-	if err := os.Chdir(filepath.Dir(execPath)); err != nil {
-		return false
-	}
-	info, err := os.Stat(serverBinary)
-	return err == nil && !info.IsDir()
-}
-
 func main() {
-	if !tryChdir() {
-		fmt.Printf("command must be executed and/or stored under the game's \"bin/\" directory\n")
+	opt := getOptions()
+	serverPath := resolveServerPath(opt.ServerPath)
+	if serverPath == "" {
+		fmt.Printf("cannot find the game binary in \"%s\"\n", opt.ServerPath)
 		os.Exit(1)
 	}
-	opt := getOptions()
+	serverDir := filepath.Dir(serverPath)
+	if err := os.Chdir(serverDir); err != nil {
+		fmt.Printf("cannot change working directory to \"%s\": %s\n", serverDir, err.Error())
+	}
 	if opt.PersistentStorageRoot == "" {
 		fmt.Printf("cannot resolve the current system persistent storage root\n")
 		os.Exit(1)
@@ -116,7 +134,11 @@ func main() {
 	clusterDir := filepath.Join(opt.PersistentStorageRoot, opt.ConfDir, opt.Cluster)
 	dir, err := os.Open(clusterDir)
 	if err != nil {
-		fmt.Printf("path \"%s\" is not exist\n", clusterDir)
+		if os.IsNotExist(err) {
+			fmt.Printf("path \"%s\" is not exist\n", clusterDir)
+		} else {
+			fmt.Printf("cannot open \"%s\": %s\n", clusterDir, err.Error())
+		}
 		os.Exit(1)
 	}
 	fileInfos, err := dir.Readdir(-1)
@@ -169,6 +191,8 @@ func main() {
 	}
 	fmt.Printf("starting cluster \"%s\" with %d shard(s): %s\n", opt.Cluster, len(shards), builder.String())
 	baseArgs := buildBaseArgs(opt)
+	//var wg sync.WaitGroup
+
 	_ = baseArgs // TODO: Do something with it.
 	fmt.Printf("%#v\n", opt)
 }

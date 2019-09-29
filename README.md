@@ -5,9 +5,9 @@ multiple shards in a Don't Starve Together cluster configuration.
 
 ## Quick Start
 
-Before using `dstcluster` you need to install the base game using `steamcmd`,
-assuming that it is already installed on `/usr/local/steam` and the game will
-be installed to `/usr/local/dst`.
+Before using `dstcluster` you need to install DST dedicated game server using
+`steamcmd`, assuming that it is already installed on `/usr/local/steam` and the
+game will be installed to `/usr/local/dst`.
 
 ```
 /usr/local/steam/steamcmd.sh \
@@ -18,19 +18,30 @@ be installed to `/usr/local/dst`.
     +quit
 ```
 
-Then, put `dstcluster` inside `<GAME_DIRECTORY>/bin`. You can directly run
-`dstcluster` using the exact same arguments (minus `-shard` and overrideable
-shard options such as server bind and steam ports) that used to run the
-`dontstarve_dedicated_server_nullrenderer` command. It will automatically start
-any shard folder inside the cluster configuration.
+Then, download `dstcluster` from the [Github release page](https://github.com/adzil/dstcluster/releases)
+to `bin/` (or `dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS/` on
+MacOS) directory. The following command can be used to download `dstcluster`
+from terminal if you are using Linux.
+
+```
+curl -L https://github.com/adzil/dstcluster/releases/latest/dstcluster-linux-amd64.tar.gz | tar xzC /usr/local/dst/bin
+```
+
+Now `dstcluster` can be executed the same way as you run the server command.
+It will pick up all shard inside a cluster configuration and run it under a
+single `dstcluster` instance.
+
+```
+/usr/local/dst/bin/dstcluster -cluster MyDediServer
+```
 
 ## Console Input
 
-Because of there are multiple shard instances running under a single
-`dstcluster` process, we need to be able to switch between shard's `STDIN` to
-enter a lua command. To do that simply type `:<shard_name>` followed by a new
-line. Subsequent `STDIN` input after the command will be passed through to the
-appointed shard. Use the command again to switch between `STDIN`s.
+Because of there are multiple shard instances running inside `dstcluster`, we
+need to be able to switch between shard's `STDIN` to enter a lua command. To do
+that simply type `:<shard_name>` followed by a new line. Subsequent `STDIN`\
+input after the command will be passed through to the appointed shard. Use the
+command again to switch between `STDIN`s.
 
 ## Graceful Termination
 
@@ -50,8 +61,30 @@ the container.
 
 This information are directly taken from
 [the Klei forum](https://forums.kleientertainment.com/forums/topic/64743-dedicated-server-command-line-options-guide/).
+Any shard related command-line options are disabled. Please use `server.ini` to
+configure the shard instead.
+
+### -server_path
+
+This option is only applicable to `dstcluster`.
+
+Change the dedicated game server binary path. If it points to a relative path,
+`dstcluster` will check them relative to the current working directory and the
+executable directory. This option is useful if `dstcluster` does not reside
+alongside the game binary. The default value depends on the platform:
+
+Platform | Directory
+:------: | ---------
+Windows  | `.\dontstarve_dedicated_server_nullrenderer.exe`
+MacOS    | `./dontstarve_dedicated_server_nullrenderer`
+Linux    | `./dontstarve_dedicated_server_nullrenderer`
+
+If you are using the default value on MacOS, `dstcluster` must be stored in
+`dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS` instead of
+alongside the `.app` folder.
 
 ### -persistent_storage_root
+
 Change the directory that your configuration directory resides in. This must be
 an absolute path. The full path to your files will be
 `<persistent_storage_root>/<conf_dir>/` where `<conf_dir>` is the value set by
@@ -60,7 +93,7 @@ an absolute path. The full path to your files will be
 Platform | Directory
 :------: | ---------
 Windows  | `<Your documents folder>/Klei`
-MacOS X  | `<Your home folder>/Documents/Klei`
+MacOS    | `<Your home folder>/Documents/Klei`
 Linux    | `~/.klei`
 
 ### -conf_dir
