@@ -7,8 +7,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -224,6 +224,7 @@ func main() {
 	done := make(chan struct{})
 	var waiter sync.WaitGroup
 	var exitCode atomic.Value
+	stdins := make(map[string]io.Writer, len(shards))
 	for _, shard := range shards {
 		args := append(baseArgs, "-shard", shard)
 		cmd := Command(serverPath, args...)
@@ -231,6 +232,9 @@ func main() {
 		shardPrefix := shard + strings.Repeat(" ", maxShardLen-len(shard)) + ": "
 		cmd.Stdout = LineWriter(PrefixWriter(os.Stdout, shardPrefix))
 		cmd.Stderr = LineWriter(PrefixWriter(os.Stderr, shardPrefix))
+		rd, wr := io.Pipe()
+		cmd.Stdin = rd
+		stdins[shard] = wr
 		if err := cmd.Start(); err != nil {
 			errorf("cannot start shard \"%s\": %s\n", shard, err.Error())
 			close(done)
@@ -239,15 +243,13 @@ func main() {
 		}
 		waiter.Add(1)
 		go func(shard string) {
-			if err := cmd.Wait(); err != nil {
-				if exitErr, ok := err.(*exec.ExitError); ok {
-					ecode := exitErr.ExitCode()
-					errorf("shard \"%s\" terminated with exit code %d\n", shard, ecode)
-					exitCode.Store(exitCode)
-				} else {
-					errorf("cannot wait for shard \"%s\": %s\n", shard, err.Error())
-					exitCode.Store(1)
-				}
+			if state, err := cmd.Process.Wait(); err != nil {
+				errorf("cannot wait for shard \"%s\": %s\n", shard, err.Error())
+				exitCode.Store(1)
+			} else if !state.Success() {
+				ecode := state.ExitCode()
+				errorf("shard \"%s\" terminated with exit code %d\n", shard, ecode)
+				exitCode.Store(exitCode)
 			}
 			if asyncClose(done) {
 				fmt.Printf("shard \"%s\" unexpectedly terminated, starting graceful termination\n", shard)
@@ -262,6 +264,43 @@ func main() {
 
 	trap := make(chan os.Signal)
 	signal.Notify(trap, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		buf := make([]byte, 8*1024)
+		var stdin io.Writer
+		for {
+			n, err := os.Stdin.Read(buf)
+			if err != nil {
+				errorf("cannot read from stdin: %s\n", err.Error())
+				break
+			}
+			if n == 0 {
+				errorf("zero-length stdin\n")
+				break
+			}
+			cbuf := buf[:n]
+			if chr := cbuf[len(cbuf)-1]; chr != '\n' {
+				errorf("unknown line separator on stdin: %c\n", chr)
+				break
+			}
+			if cbuf[0] == ':' {
+				shardName := string(cbuf[1 : len(cbuf)-1])
+				if cstdin, ok := stdins[shardName]; ok {
+					stdin = cstdin
+					fmt.Printf("forwarding stdin to shard \"%s\"\n", shardName)
+				} else {
+					errorf("unknown shard name \"%s\"\n", shardName)
+				}
+				continue
+			}
+			if stdin == nil {
+				errorf("no shard selected for stdin forwarding, use :<shard_name> to select\n")
+				continue
+			}
+			if _, err := stdin.Write(cbuf); err != nil {
+				errorf("cannot write to shard stdin: %s\n", err.Error())
+			}
+		}
+	}()
 	select {
 	case <-trap:
 		fmt.Printf("terminate request, starting graceful termination\n")
