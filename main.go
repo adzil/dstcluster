@@ -49,6 +49,29 @@ func defaultServerPath() string {
 	return "./dontstarve_dedicated_server_nullrenderer"
 }
 
+func getPlural(n int) string {
+	if n > 1 {
+		return "s"
+	}
+	return ""
+}
+
+func getConcat(items []string) string {
+	var builder strings.Builder
+	for i, shard := range items {
+		if i > 0 {
+			builder.WriteString(", ")
+			if i == len(items)-1 {
+				builder.WriteString(" and ")
+			}
+		}
+		builder.WriteByte('"')
+		builder.WriteString(shard)
+		builder.WriteByte('"')
+	}
+	return builder.String()
+}
+
 func getOptions() options {
 	var opt options
 	flag.StringVar(&opt.ServerPath, "server_path", defaultServerPath(), "Change the dedicated game server binary path.")
@@ -116,35 +139,35 @@ func buildBaseArgs(opt options) []string {
 	return baseArgs
 }
 
+func fatalf(format string, v ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, v...)
+	os.Exit(1)
+}
+
 func main() {
 	opt := getOptions()
 	serverPath := resolveServerPath(opt.ServerPath)
 	if serverPath == "" {
-		fmt.Printf("cannot find the game binary in \"%s\"\n", opt.ServerPath)
-		os.Exit(1)
+		fatalf("cannot find the game binary in \"%s\"\n", opt.ServerPath)
 	}
 	serverDir := filepath.Dir(serverPath)
 	if err := os.Chdir(serverDir); err != nil {
-		fmt.Printf("cannot change working directory to \"%s\": %s\n", serverDir, err.Error())
+		fatalf("cannot change working directory to \"%s\": %s\n", serverDir, err.Error())
 	}
 	if opt.PersistentStorageRoot == "" {
-		fmt.Printf("cannot resolve the current system persistent storage root\n")
-		os.Exit(1)
+		fatalf("cannot resolve the current system persistent storage root\n")
 	}
 	clusterDir := filepath.Join(opt.PersistentStorageRoot, opt.ConfDir, opt.Cluster)
 	dir, err := os.Open(clusterDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			fmt.Printf("path \"%s\" is not exist\n", clusterDir)
-		} else {
-			fmt.Printf("cannot open \"%s\": %s\n", clusterDir, err.Error())
+			fatalf("path \"%s\" is not exist\n", clusterDir)
 		}
-		os.Exit(1)
+		fatalf("cannot open \"%s\": %s\n", clusterDir, err.Error())
 	}
 	fileInfos, err := dir.Readdir(-1)
 	if err != nil {
-		fmt.Printf("path \"%s\" is not a directory\n", clusterDir)
-		os.Exit(1)
+		fatalf("path \"%s\" is not a directory\n", clusterDir)
 	}
 
 	var shards []string
@@ -166,33 +189,17 @@ func main() {
 		shards = append(shards, shard)
 	}
 	if !clusterConfig {
-		fmt.Printf("configuration \"cluster.ini\" does not exist in cluster \"%s\"\n", opt.Cluster)
-		os.Exit(1)
+		fatalf("configuration \"cluster.ini\" does not exist in cluster \"%s\"\n", opt.Cluster)
 	}
 	if !clusterToken {
-		fmt.Printf("token \"cluster_token.txt\" does not exist in cluster \"%s\"\n", opt.Cluster)
-		os.Exit(1)
+		fatalf("token \"cluster_token.txt\" does not exist in cluster \"%s\"\n", opt.Cluster)
 	}
 	if len(shards) == 0 {
-		fmt.Printf("cluster \"%s\" does not contain any shard configuration\n", opt.Cluster)
-		os.Exit(1)
+		fatalf("cluster \"%s\" does not contain any shard configuration\n", opt.Cluster)
 	}
-	var builder strings.Builder
-	for i, shard := range shards {
-		if i > 0 {
-			builder.WriteString(", ")
-			if i == len(shards)-1 {
-				builder.WriteString(" and ")
-			}
-		}
-		builder.WriteByte('"')
-		builder.WriteString(shard)
-		builder.WriteByte('"')
-	}
-	fmt.Printf("starting cluster \"%s\" with %d shard(s): %s\n", opt.Cluster, len(shards), builder.String())
-	baseArgs := buildBaseArgs(opt)
-	//var wg sync.WaitGroup
 
+	fmt.Printf("starting cluster \"%s\" with %d shard%s: %s\n", opt.Cluster, len(shards), getPlural(len(shards)),
+		getConcat(shards))
+	baseArgs := buildBaseArgs(opt)
 	_ = baseArgs // TODO: Do something with it.
-	fmt.Printf("%#v\n", opt)
 }
