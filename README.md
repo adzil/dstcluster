@@ -19,17 +19,18 @@ game will be installed to `/usr/local/dst`.
 ```
 
 Then, download `dstcluster` from the [Github release page](https://github.com/adzil/dstcluster/releases)
-to `bin/` (or `dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS/` on
-MacOS) directory. The following command can be used to download `dstcluster`
+to the game `bin/` directory. On MacOS, it is located in `dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS/`
+instead of `bin/`. The following command can be used to download `dstcluster`
 from terminal if you are using Linux.
 
 ```
-curl -L https://github.com/adzil/dstcluster/releases/latest/dstcluster-linux-amd64.tar.gz | tar xzC /usr/local/dst/bin
+curl -L https://github.com/adzil/dstcluster/releases/latest/dstcluster-linux-amd64.tar.gz | \
+    tar xzC /usr/local/dst/bin
 ```
 
 Now `dstcluster` can be executed the same way as you run the server command.
 It will pick up all shard inside a cluster configuration and run it under a
-single `dstcluster` instance.
+single `dstcluster` instance. For example:
 
 ```
 /usr/local/dst/bin/dstcluster -cluster MyDediServer
