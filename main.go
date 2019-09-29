@@ -98,6 +98,16 @@ func getOptions() options {
 	return opt
 }
 
+func asyncClose(ch chan struct{}) bool {
+	select {
+	case <-ch:
+	default:
+		close(ch)
+		return true
+	}
+	return false
+}
+
 func resolveServerPath(serverPath string) string {
 	if info, err := os.Stat(serverPath); err == nil && !info.IsDir() {
 		return serverPath
@@ -230,15 +240,17 @@ func main() {
 		waiter.Add(1)
 		go func(shard string) {
 			if err := cmd.Wait(); err != nil {
-				close(done)
 				if exitErr, ok := err.(*exec.ExitError); ok {
 					ecode := exitErr.ExitCode()
-					errorf("shard \"%s\" exited with exit code %d\n", shard, ecode)
+					errorf("shard \"%s\" terminated with exit code %d\n", shard, ecode)
 					exitCode.Store(exitCode)
 				} else {
 					errorf("cannot wait for shard \"%s\": %s\n", shard, err.Error())
 					exitCode.Store(1)
 				}
+			}
+			if asyncClose(done) {
+				fmt.Printf("shard \"%s\" unexpectedly terminated, starting graceful termination\n", shard)
 			}
 			waiter.Done()
 		}(shard)
@@ -252,15 +264,15 @@ func main() {
 	signal.Notify(trap, os.Interrupt, syscall.SIGTERM)
 	select {
 	case <-trap:
-		close(done)
-		fmt.Printf("starting graceful termination, interrupt to skip wait\n")
+		fmt.Printf("terminate request, starting graceful termination\n")
+		asyncClose(done)
 	case <-done:
-		errorf("waiting for other shard to terminate, interrupt to skip wait\n")
 	}
 	go func() {
 		waiter.Wait()
 		trap <- os.Interrupt
 	}()
+	fmt.Printf("waiting for other shard to terminate, interrupt to skip wait\n")
 	<-trap
 	if ecode, _ := exitCode.Load().(int); ecode != 0 {
 		os.Exit(ecode)
