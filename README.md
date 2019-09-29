@@ -1,13 +1,13 @@
 # Don't Starve Together Cluster Runner
 
-`dstcluster` provides command-line interface for running and managing multiple
-shards in a Don't Starve Together cluster configuration.
+`dstcluster` provides cross-platform command-line interface for running
+multiple shards in a Don't Starve Together cluster configuration.
 
 ## Quick Start
 
-Before using `dstcluster` you need to install the base game using `steamcmd`,
-assuming that it is already installed on `/usr/local/steam` and the game will
-be installed to `/usr/local/dst`.
+Before using `dstcluster` you need to install DST dedicated game server using
+`steamcmd`, assuming that it is already installed on `/usr/local/steam` and the
+game will be installed to `/usr/local/dst`.
 
 ```
 /usr/local/steam/steamcmd.sh \
@@ -18,18 +18,74 @@ be installed to `/usr/local/dst`.
     +quit
 ```
 
-Then, put `dstcluster` inside `<GAME_DIRECTORY>/bin`. You can directly run
-`dstcluster` using the exact same arguments (minus `-shard` and overrideable
-shard options such as server bind and steam ports) that used to run the
-`dontstarve_dedicated_server_nullrenderer` command. It will automatically start
-any shard folder inside the cluster configuration.
+Then, download `dstcluster` from the [Github release page](https://github.com/adzil/dstcluster/releases)
+to the game `bin/` directory. On MacOS, it is located in `dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS/`
+instead of `bin/`. The following command can be used to download `dstcluster`
+from terminal if you are using Linux.
+
+```
+curl -L https://github.com/adzil/dstcluster/releases/latest/dstcluster-linux-amd64.tar.gz | \
+    tar xzC /usr/local/dst/bin
+```
+
+Now `dstcluster` can be executed the same way as you run the server command.
+It will pick up all shard inside a cluster configuration and run it under a
+single `dstcluster` instance. For example:
+
+```
+/usr/local/dst/bin/dstcluster -cluster MyDediServer
+```
+
+## Console Input
+
+Because of there are multiple shard instances running inside `dstcluster`, we
+need to be able to switch between shard's `STDIN` to enter a lua command. To do
+that simply type `:<shard_name>` followed by a new line. Subsequent `STDIN`\
+input after the command will be passed through to the appointed shard. Use the
+command again to switch between `STDIN`s.
+
+## Graceful Termination
+
+`dstcluster` can be safely terminated with `SIGINT` (or `Ctrl+C`) or `SIGTERM`
+if you are running it under Docker container. On Windows, sending `Ctrl+C` or
+`Ctrl+Break` signal will also trigger graceful termination. Under the hood, it
+sends `SIGINT` (or `Ctrl+Break` signal on Windows) to every running shards so
+it can cleanly terminate itself and wait until the last running shard has been
+terminated.
+
+Note that the default Docker termination wait time (10 seconds) may be not
+enough for the shard to clean themself up. It is possible to corrupt the save
+data if the termination wait time has already passed and Docker forcefully kill
+the container.
 
 ## Command-Line Options
 
 This information are directly taken from
 [the Klei forum](https://forums.kleientertainment.com/forums/topic/64743-dedicated-server-command-line-options-guide/).
+Any shard related command-line options are disabled. Please use `server.ini` to
+configure the shard instead.
+
+### -server_path
+
+This option is only applicable to `dstcluster`.
+
+Change the dedicated game server binary path. If it points to a relative path,
+`dstcluster` will check them relative to the current working directory and the
+executable directory. This option is useful if `dstcluster` does not reside
+alongside the game binary. The default value depends on the platform:
+
+Platform | Directory
+:------: | ---------
+Windows  | `.\dontstarve_dedicated_server_nullrenderer.exe`
+MacOS    | `./dontstarve_dedicated_server_nullrenderer`
+Linux    | `./dontstarve_dedicated_server_nullrenderer`
+
+If you are using the default value on MacOS, `dstcluster` must be stored in
+`dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS` instead of
+alongside the `.app` folder.
 
 ### -persistent_storage_root
+
 Change the directory that your configuration directory resides in. This must be
 an absolute path. The full path to your files will be
 `<persistent_storage_root>/<conf_dir>/` where `<conf_dir>` is the value set by
@@ -38,7 +94,7 @@ an absolute path. The full path to your files will be
 Platform | Directory
 :------: | ---------
 Windows  | `<Your documents folder>/Klei`
-MacOS X  | `<Your home folder>/Documents/Klei`
+MacOS    | `<Your home folder>/Documents/Klei`
 Linux    | `~/.klei`
 
 ### -conf_dir
@@ -65,8 +121,9 @@ any steam-related functionality will not work.
 
 ### -disabledatacollection
 
-- Disable data collection for the server.
-- We require the collection of user data to provide online services. Servers
+Disable data collection for the server.
+
+We require the collection of user data to provide online services. Servers
 with disabled data collection will only have access to play in offline mode.
 For more details on our privacy policy and how we use the data we collect,
 please see our official privacy policy. <https://klei.com/privacy-policy>
@@ -78,8 +135,9 @@ connections. This is an advanced feature that most people will not need to use.
 
 ### -players
 
-- Valid values: `1..64`
-- Set the maximum number of players that will be allowed to join the game. This
+Valid values: `1..64`
+
+Set the maximum number of players that will be allowed to join the game. This
 option overrides the `[GAMEPLAY] / max_players` setting in `cluster.ini`.
 
 ### -backup_logs
@@ -90,30 +148,11 @@ backups will be stored in a directory called `backup` in the same directory as
 
 ### -tick
 
-- Valid values: `15..60`
-- This is the number of times per-second that the server sends updates to
+Valid values: `15..60`
+
+This is the number of times per-second that the server sends updates to
 clients. Increasing this may improve precision, but will result in more network
 traffic. This option overrides the `[NETWORK] / tick_rate` setting in
 `cluster.ini`. It is recommended to leave this at the default value of `15`. If
 you do change this option, it is recommended that you do so only for LAN games,
 and use a number evenly divisible into `60` (`15`, `20`, `30`).
-
-## Console Input
-
-Because of there are multiple shard instances running on `dstcluster`, we need
-to be able to switch between shard's `STDIN` to enter a lua command. To do that
-simply type `:<shard_name>` followed by a new line. Subsequent `STDIN` input
-after the command will be passed through to the appointed shard. Use the command
-again to switch between `STDIN`s.
-
-## Termination Signal
-
-`dstcluster` can be safely terminated with `SIGINT` (or `Ctrl+C`) or `SIGTERM`
-if you are running it under Docker container. Under the hood, it sends `SIGINT`
-to every running shards so it can cleanly terminate itself and wait the last
-shard terminated.
-
-Note that the default Docker termination wait time (10 seconds) may be not
-enough for the shard to clean themself up. It is possible to corrupt the save
-data if the termination wait time has already passed and Docker forcefully kill
-the container.
