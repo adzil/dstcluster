@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"runtime"
@@ -232,24 +233,30 @@ func main() {
 		shardPrefix := shard + strings.Repeat(" ", maxShardLen-len(shard)) + ": "
 		cmd.Stdout = LineWriter(PrefixWriter(os.Stdout, shardPrefix))
 		cmd.Stderr = LineWriter(PrefixWriter(os.Stderr, shardPrefix))
-		rd, wr := io.Pipe()
-		cmd.Stdin = rd
-		stdins[shard] = wr
+		var err error
+		if stdins[shard], err = cmd.StdinPipe(); err != nil {
+			errorf("cannot pipe stdin for shard \"%s\": %s", shard, err.Error())
+			asyncClose(done)
+			exitCode.Store(1)
+			break
+		}
 		if err := cmd.Start(); err != nil {
 			errorf("cannot start shard \"%s\": %s\n", shard, err.Error())
-			close(done)
+			asyncClose(done)
 			exitCode.Store(1)
 			break
 		}
 		waiter.Add(1)
 		go func(shard string) {
-			if state, err := cmd.Process.Wait(); err != nil {
-				errorf("cannot wait for shard \"%s\": %s\n", shard, err.Error())
-				exitCode.Store(1)
-			} else if !state.Success() {
-				ecode := state.ExitCode()
-				errorf("shard \"%s\" terminated with exit code %d\n", shard, ecode)
-				exitCode.Store(exitCode)
+			if err := cmd.Wait(); err != nil {
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					ecode := exitErr.ExitCode()
+					errorf("shard \"%s\" terminated with exit code %d\n", shard, ecode)
+					exitCode.Store(exitCode)
+				} else {
+					errorf("cannot wait for shard \"%s\": %s\n", shard, err.Error())
+					exitCode.Store(1)
+				}
 			}
 			if asyncClose(done) {
 				fmt.Printf("shard \"%s\" unexpectedly terminated, starting graceful termination\n", shard)
