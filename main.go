@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -222,7 +223,7 @@ func main() {
 		getConcat(shards))
 	baseArgs := buildBaseArgs(opt)
 	serverDir := filepath.Dir(serverPath)
-	done := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
 	var waiter sync.WaitGroup
 	var exitCode atomic.Value
 	stdins := make(map[string]io.Writer, len(shards))
@@ -236,13 +237,13 @@ func main() {
 		var err error
 		if stdins[shard], err = cmd.StdinPipe(); err != nil {
 			errorf("cannot pipe stdin for shard \"%s\": %s", shard, err.Error())
-			asyncClose(done)
+			cancel()
 			exitCode.Store(1)
 			break
 		}
 		if err := cmd.Start(); err != nil {
 			errorf("cannot start shard \"%s\": %s\n", shard, err.Error())
-			asyncClose(done)
+			cancel()
 			exitCode.Store(1)
 			break
 		}
@@ -258,13 +259,14 @@ func main() {
 					exitCode.Store(1)
 				}
 			}
-			if asyncClose(done) {
+			if err := ctx.Err(); err == nil {
+				cancel()
 				fmt.Printf("shard \"%s\" unexpectedly terminated, starting graceful termination\n", shard)
 			}
 			waiter.Done()
 		}(shard)
 		go func() {
-			<-done
+			<-ctx.Done()
 			Interrupt(cmd)
 		}()
 	}
@@ -311,8 +313,8 @@ func main() {
 	select {
 	case <-trap:
 		fmt.Printf("terminate request, starting graceful termination\n")
-		asyncClose(done)
-	case <-done:
+		cancel()
+	case <-ctx.Done():
 	}
 	go func() {
 		waiter.Wait()
