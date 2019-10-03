@@ -1,4 +1,4 @@
-NAME    := dstserver
+NAME    := dstcluster
 GOARCH  := amd64
 TARGETS := windows linux darwin
 OUTPUT  := .build
