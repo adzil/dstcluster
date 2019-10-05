@@ -58,6 +58,24 @@ enough for the shard to clean themself up. It is possible to corrupt the save
 data if the termination wait time has already passed and Docker forcefully kill
 the container.
 
+## Building from Source
+
+To build `dstcluster` from the source you need Go 1.13 installed. Then, simply
+clone this repository and run `go build` or `go install` to automatically put
+them in `$GOPATH/bin`:
+
+```
+git clone https://github.com/adzil/dstcluster.git
+cd dstcluster
+go build .
+```
+
+Because of the game platform compatiblity, `dstcluster` only supports Windows,
+MacOS, and Linux.
+
+`make` commands only used to create and compress cross-platform binary for the
+[release page](https://github.com/adzil/dstcluster/releases).
+
 ## Command-Line Options
 
 This information are directly taken from
