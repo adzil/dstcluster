@@ -236,7 +236,7 @@ func main() {
 		cmd.Stderr = LineWriter(PrefixWriter(os.Stderr, shardPrefix))
 		var err error
 		if stdins[shard], err = cmd.StdinPipe(); err != nil {
-			errorf("cannot pipe stdin for shard \"%s\": %s", shard, err.Error())
+			errorf("cannot create stdin pipe for shard \"%s\": %s", shard, err.Error())
 			cancel()
 			exitCode.Store(1)
 			break
@@ -248,6 +248,7 @@ func main() {
 			break
 		}
 		waiter.Add(1)
+		shardCtx, shardCancel := context.WithCancel(context.Background())
 		go func(shard string) {
 			if err := cmd.Wait(); err != nil {
 				if exitErr, ok := err.(*exec.ExitError); ok {
@@ -259,6 +260,7 @@ func main() {
 					exitCode.Store(1)
 				}
 			}
+			shardCancel()
 			if err := ctx.Err(); err == nil {
 				cancel()
 				fmt.Printf("shard \"%s\" unexpectedly terminated, starting graceful termination\n", shard)
@@ -267,7 +269,10 @@ func main() {
 		}(shard)
 		go func() {
 			<-ctx.Done()
-			Interrupt(cmd)
+			if shardCtx.Err() == nil {
+				shardCancel()
+				Interrupt(cmd)
+			}
 		}()
 	}
 
@@ -306,7 +311,7 @@ func main() {
 				continue
 			}
 			if _, err := stdin.Write(cbuf); err != nil {
-				errorf("cannot write to shard stdin: %s\n", err.Error())
+				errorf("cannot forward to shard stdin: %s\n", err.Error())
 			}
 		}
 	}()
