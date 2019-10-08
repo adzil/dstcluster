@@ -284,11 +284,13 @@ func main() {
 		for {
 			n, err := os.Stdin.Read(buf)
 			if err != nil {
-				errorf("cannot read from stdin: %s\n", err.Error())
+				if err != io.EOF {
+					errorf("cannot read from stdin: %s\n", err.Error())
+				}
 				break
 			}
 			if n == 0 {
-				errorf("zero-length stdin\n")
+				errorf("read stdin with zero length\n")
 				break
 			}
 			cbuf := buf[:n]
@@ -296,8 +298,12 @@ func main() {
 				errorf("unknown line separator on stdin: %c\n", chr)
 				break
 			}
+			endOffset := 1
+			if len(cbuf) > 1 && cbuf[len(cbuf)-2] == '\r' {
+				endOffset++
+			}
 			if cbuf[0] == ':' {
-				shardName := string(cbuf[1 : len(cbuf)-1])
+				shardName := string(cbuf[1 : len(cbuf)-endOffset])
 				if cstdin, ok := stdins[shardName]; ok {
 					stdin = cstdin
 					fmt.Printf("forwarding stdin to shard \"%s\"\n", shardName)
