@@ -22,7 +22,7 @@ clean:
 $(TARGETS): export GOOS = $@
 
 # Build for windows platform
-windows: EXTENSION = .exe
+windows: export EXTENSION = .exe
 windows:
 	$(MAKE) $(PACKAGE_PATH).zip
 
