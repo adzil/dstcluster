@@ -24,7 +24,7 @@ instead of `bin/`. The following command can be used to download `dstcluster`
 from terminal if you are using Linux.
 
 ```
-curl -L https://github.com/adzil/dstcluster/releases/download/v1.0.1/dstcluster-linux-amd64.tar.gz | \
+curl -L https://github.com/adzil/dstcluster/releases/download/v1.0.2/dstcluster-linux-amd64.tar.gz | \
     tar xzC /usr/local/dst/bin
 ```
 
