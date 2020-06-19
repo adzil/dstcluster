@@ -23,6 +23,7 @@ import (
 
 type options struct {
 	ServerPath            string
+	SyncMods              bool
 	PersistentStorageRoot string
 	ConfDir               string
 	Cluster               string
@@ -82,6 +83,7 @@ func getConcat(items []string) string {
 func getOptions() options {
 	var opt options
 	flag.StringVar(&opt.ServerPath, "server_path", defaultServerPath(), "Change the dedicated game server binary path.")
+	flag.BoolVar(&opt.SyncMods, "sync_mods", false, "Sync server's mods setup file with the cluster mod configuration.")
 	flag.StringVar(&opt.PersistentStorageRoot, "persistent_storage_root", defaultRoot(),
 		"Change the directory that your configuration directory resides in.")
 	flag.StringVar(&opt.ConfDir, "conf_dir", "DoNotStarveTogether", "Change the name of your configuration directory.")
@@ -190,6 +192,7 @@ func main() {
 	var shards []string
 	var maxShardLen int
 	var clusterToken, clusterConfig bool
+	mods := make(map[string]struct{})
 	for _, fileInfo := range fileInfos {
 		if !fileInfo.IsDir() {
 			switch fileInfo.Name() {
@@ -208,6 +211,15 @@ func main() {
 		if len(shard) > maxShardLen {
 			maxShardLen = len(shard)
 		}
+
+		if !opt.SyncMods {
+			continue
+		}
+		if err := getClusterMods(clusterDir, shard, mods); os.IsNotExist(err) {
+			continue
+		} else if err != nil {
+			fatalf("error when accessing the \"%s\" shard modoverrides.lua: %s\n", shard, err.Error())
+		}
 	}
 	if !clusterConfig {
 		fatalf("configuration \"cluster.ini\" does not exist in cluster \"%s\"\n", opt.Cluster)
@@ -217,6 +229,12 @@ func main() {
 	}
 	if len(shards) == 0 {
 		fatalf("cluster \"%s\" does not contain any shard configuration\n", opt.Cluster)
+	}
+
+	if len(mods) > 0 {
+		if err := appendServerMods(serverPath, mods); err != nil {
+			fatalf("error when appending server mods setup file: %s\n", err.Error())
+		}
 	}
 
 	fmt.Printf("starting cluster \"%s\" with %d shard%s: %s\n", opt.Cluster, len(shards), getPlural(len(shards)),
