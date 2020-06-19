@@ -102,6 +102,15 @@ If you are using the default value on MacOS, `dstcluster` must be stored in
 `dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS` instead of
 alongside the `.app` folder.
 
+## -sync_mods
+
+This option is only applicable to `dstcluster`.
+
+If this option is enabled, `dstcluster` will try to populate all mods inside
+the cluster's `modoverrides.lua` and append them to the server's
+`dedicated_server_mods_setup.lua` so it can be automatically downloaded and/or
+updated when starting the cluster.
+
 ### -persistent_storage_root
 
 Change the directory that your configuration directory resides in. This must be
