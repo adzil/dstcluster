@@ -102,7 +102,7 @@ If you are using the default value on MacOS, `dstcluster` must be stored in
 `dontstarve_dedicated_server_nullrenderer.app/Contents/MacOS` instead of
 alongside the `.app` folder.
 
-## -sync_mods
+### -sync_mods
 
 This option is only applicable to `dstcluster`.
 
